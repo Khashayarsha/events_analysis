@@ -22,7 +22,7 @@ events_columns = ['id_odsp', 'id_event', 'sort_order', 'time', 'text', 'event_ty
                   'location', 'bodypart', 'assist_method', 'situation', 'fast_break']
 
 ginf_columns = ['id_odsp', 'link_odsp', 'adv_stats', 'date', 'league', 'season',
-'country', 'ht', 'at', 'fthg', 'ftag', 'odd_h', 'odd_d', 'odd_a',
+'country', 'ht', 'at', 'home_goals', 'away_goals', 'odd_h', 'odd_d', 'odd_a',
 'odd_over', 'odd_under', 'odd_bts', 'odd_bts_n']
 
 
