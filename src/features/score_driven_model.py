@@ -66,7 +66,8 @@ def get_f1(data_name):
 
 
 
-
+def get_first_year():
+    return first_year, participants_per_season.get(year_one)
 
 
 
