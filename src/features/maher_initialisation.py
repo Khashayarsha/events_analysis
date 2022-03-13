@@ -1,14 +1,17 @@
 #%%
+from functools import reduce
 import pandas as pd 
 import numpy as np 
 import math
-import score_driven_model
+#import score_driven_model
 import biv_poiss
 import scipy
 from scipy import optimize
 import time
 
-time.timer()
+#from score_driven_model import get_playing_team
+
+tic = time.time()
 
 def link_function(parameters, variables=['goals']):
 
@@ -71,9 +74,15 @@ def maher_estimation(x, *args):
         game_log_likelihood = math.log( biv_poiss.pmf(home_goals,away_goals,l1,l2,l3))
         total_log_likelihood +=game_log_likelihood
 
-    print('done calculating total likelihood once')
+    #print('done calculating total likelihood once')
     return -1*total_log_likelihood
 
+
+def get_playing_team(df, season):
+    temp = df[df['season'] == season].apply(
+        lambda x: set(x.participants), axis='columns')
+    participants_in_season = reduce(lambda x, y: x.union(y), temp.values)
+    return participants_in_season
 
 def constraint_alphas(x):
     # hardcoded for convenience.
@@ -140,20 +149,51 @@ def start(first_year_data, first_year_participants, variable_names = 'goals'):
         
     return results, teams
 
-first_year, participants = score_driven_model.get_first_year()
-results, teams = start(first_year, participants)
+#first_year, participants = score_driven_model.get_first_year()
+# results, teams = start(first_year, participants)
 
-x = results.x #strengths-vector
-strengths = {team: (x[v[0]], x[v[1]]) #strengths dict   w/ mapping  team_name : alpha_i, beta_i
- for team, v in teams.items() if team not in ['delta', 'l3']}
-strengths.update({'delta':x[teams['delta']]})
-strengths.update({'l3': x[teams['l3']]})
+# x = results.x #strengths-vector
+# strengths = {team: (x[v[0]], x[v[1]]) #strengths dict   w/ mapping  team_name : alpha_i, beta_i
+#  for team, v in teams.items() if team not in ['delta', 'l3']}
+# strengths.update({'delta':x[teams['delta']]})
+# strengths.update({'l3': x[teams['l3']]})
 
 
 #zorg dat de dict telkens naar zelfde soort datatype wijst (tuple)
 #fix de get_maher_estimate functie zodat het maher runt, en de year1 strengths dict returnt. 
 
-def get_maher_estimate():
-    #start()
-    return strengths_dict 
+def load_data(data_name):
+    df = pd.read_pickle(data_name)
+    print(f"loaded {data_name} succesfully")
+    return df
+
+def get_maher_estimate(df, variable_names = "goals"):
+    print(f"RUNNING MAHER ESTIMATION")
+      
+
+    year_one = min(df['season'])
+    print(f"first year detected as {year_one}, using variables {variable_names}")
+    first_year_data = df[df['season'] == year_one]
+
+    first_participants = get_playing_team(first_year_data, year_one)
+    results, teams = start(first_year_data, first_participants, variable_names )
+
+    x = results.x  # strengths-vector
+
+
+    strengths_dict = {team: (x[v[0]], x[v[1]])  # strengths dict   w/ mapping  team_name : alpha_i, beta_i
+             for team, v in teams.items() if team not in ['delta', 'l3']}
+    strengths_dict.update({'delta': x[teams['delta']]})
+    strengths_dict.update({'l3': x[teams['l3']]})
+
+
+
+    return strengths_dict
+
+
+#strengths_debug = get_maher_estimate('debug')
+
+toc = time.time()
+
+print(f"elapsed time = {toc-tic} seconds.. for Maher initialisation")
 
