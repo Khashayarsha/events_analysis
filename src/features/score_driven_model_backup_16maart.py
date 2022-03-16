@@ -65,17 +65,17 @@ non_first_partic = non_first_partic.difference(starting_teams)
 
 def get_f1(data_name,variable_names):
     name = data_name
-    f1 = None
+    f1 = 0
     if logbook.get(name):
-        print(f"Found previously Maher-initialised team-strengths for {data_name} for variable: {variable_names}")
+        print(f"SDM: Found previously Maher-initialised team-strengths for {data_name} for variables: {logbook[data_name].keys()}")
         if 'maher_'+variable_names in logbook[data_name].keys():
             f1 = logbook[name].get('maher_'+variable_names)
-            print('Loaded f1-vector from saved Maher initalisation in logbook')
+            print('SDM: Loaded f1-vector from saved Maher initalisation in logbook')
             return f1
         else: 
             #logbook[name]['maher'] = False
-            print('Maher initialised f1 not found for this dataset.')
-            print('Running Maher_initialisation on ', name)
+            print('SDM: Maher initialised f1 not found for this dataset.')
+            print('SDM: Running Maher_initialisation on ', name)
             #first_partici = participants_per_season.get(year_one)
             df = load_data(data_name)
             f1 = get_maher_estimate(df, variable_names=variable_names)
@@ -83,7 +83,7 @@ def get_f1(data_name,variable_names):
             
     else:
         print(
-            f"No entries found in log for {data_name} for {variable_names}. \n running Maher initialisation on {data_name}")
+            f"SDM: No entries found in log for {data_name} for {variable_names}. \n running Maher initialisation on {data_name}")
         df = load_data(data_name)
         f1 = get_maher_estimate(df, variable_names)
         logbook.update({data_name:{'maher_'+variable_names:f1 }})
@@ -93,8 +93,9 @@ def get_f1(data_name,variable_names):
 
 
 f1_goals = get_f1(data_name, 'goals')
+f1_attempts = get_f1(data_name,'attempts')
 f1_weighted_attempts = get_f1(data_name, 'weighted_attempts_discrete')
-#initialize the using Maher  <DONE>
+ 
 
 #%%
 
@@ -118,26 +119,16 @@ all_seasons = deepcopy(df)
 
 print("RETRIEVED ALL DATA. RUNNING MODEL:")
 
-def initialise_f():
-    #put all Maher values from f1 in the dict that tracks all teams
-    initial_strengths = {}
-    return initial_strengths
+
+def constraint_delta(x):
+    delta = x[-2]
+
+    return delta
 
 
-
-def update_all(params):
-    #run score updating on all teams, to get their time-varying strength-paths 
-    #for all strengths concerned
-    return 0 
-
-def get_lambdas(variable_names):
-    #construct the intensities l1, l2 and home-advantage delta 
-    #based on which variables are used in the model 
-    #if only 'goals' as variable: go for 
-
-    return 0
-
-
+def constraint_gamma(x):
+    gamma = x[-1]
+    return gamma
 
 
 
@@ -146,13 +137,17 @@ def get_strengths_dictionary(f1, variable_names = 'goals'):
     #     a1, a2,b1,b2,delta,l3 = params
     # elif variable_names == 'goals weighted_attempts':
     #     a1,a2,b1,b2,c1,c2,d1,c2,delta,l3 = params
-
+    print(f"SDM: MAKING DICTIONARY FOR {variable_names}")
     if variable_names == 'goals':    
         ft = {team: [f1_goals.get(team)] for team in f1_goals.keys()}    
         for team in non_first_partic:
             ft.update({team: [(0, 0)]})
     if variable_names == 'weighted_attempts_discrete':
         ft = {team: [f1_weighted_attempts.get(team)] for team in f1_weighted_attempts.keys()}
+        for team in non_first_partic:
+            ft.update({team: [(0, 0)]})
+    if variable_names  == 'attempts':
+        ft = {team: [f1_attempts.get(team)] for team in f1_attempts.keys()}
         for team in non_first_partic:
             ft.update({team: [(0, 0)]})
 
@@ -179,9 +174,13 @@ def run_model(params, *args):
     if variable_names == 'goals':
         a1, a2, b1, b2, delta, l3 = params
         ft_local = deepcopy(ft_goals)
-    if variable_names == 'weighted_attempts_discrete':
+    elif variable_names == 'weighted_attempts_discrete':
         a1, a2, b1, b2, delta, l3 = params
         ft_local = deepcopy(ft_attempts)
+    elif variable_names == 'attempts':
+        a1, a2, b1, b2, delta, l3 = params
+        ft_local = deepcopy(ft_attempts)
+
 
 
     total_likelihood = 0 
@@ -207,15 +206,14 @@ def run_model(params, *args):
 
             l1,l2 = biv_poiss.link_function(alpha_i, alpha_j, beta_i, beta_j, delta)
 
-            # l1 = math.exp(home_adv + home_strengths[0] - away_strengths[1])
-            # l2 = math.exp(away_strengths[0] - home_strengths[1])
+           
 
             score = biv_poiss.score(home_result, away_result, l1, l2, l3)
 
-            alpha_i_next = 0+ b1*home_strengths[0] + a1*score[0]
-            alpha_j_next = 0+ b1*away_strengths[0] + a1*score[1]
-            beta_i_next = 0+ b2* home_strengths[1] + a2*score[2]
-            beta_j_next = 0+ b2*away_strengths[1] + a2*score[3]
+            alpha_i_next = 0+ b1*alpha_i + a1*score[0]
+            alpha_j_next = 0+ b1*alpha_j + a1*score[1]
+            beta_i_next = 0+ b2* beta_i + a2*score[2]
+            beta_j_next = 0+ b2*beta_j + a2*score[3]
 
             ft_local[home_team].append((alpha_i_next, beta_i_next))
             ft_local[away_team].append((alpha_j_next, beta_j_next))
@@ -225,52 +223,62 @@ def run_model(params, *args):
             if p > 0:
                 total_likelihood = total_likelihood + math.log(p)        
 
-        for team in all_teams.difference(round_participants):
-            alpha_i_next = b1*ft_local[team][-1][0]
-            beta_i_next = b2*ft_local[team][-1][1]
-            ft_local[team].append((alpha_i_next, beta_i_next))
-            #ft_local[team].append(ft_local[team][-1])
+        for team in all_teams.difference(round_participants):  
+            ft_local[team].append((alpha_i, beta_i))
 
-
-                 
+            # alpha_i, beta_i = ft_local[team][-1]
+            # alpha_i_next =  0+ b1*alpha_i
+            # beta_i_next = 0 + b2*beta_i
+            # ft_local[team].append((alpha_i_next, beta_i_next))
+             
     if return_strengths:
         return ft_local, -total_likelihood
+
     return -total_likelihood
 
 
+print('making ft_goals dict')
+ft_goals = get_strengths_dictionary(f1_goals, variable_names = 'goals')
+
+print('making ft_attempts dict')
+ft_attempts = get_strengths_dictionary(f1_goals, variable_names='attempts')
+print('making ft_weighted_attempt dict')
+ft_weighted_attempts = get_strengths_dictionary(f1_weighted_attempts, variable_names= 'weighted_attempts_discrete')
 
 x0 = [0.1, 0.1,   0.95, 0.95, 0.9, 0.9, 0.9, 0.9]
-x0_b = [0.2, 0.2, 0.09, 0.9, 0.2, 0.2]  # a1, a2, l3 
+x0_b = [0.2, 0.2, 0.9, 0.9, 0.2, 0.2]  # a1, a2, l3 
 # options={'maxfev':100}
 
 
-#variable_names = 'goals'
-#return_strengths = False
+# variable_names = 'goals'
+# return_strengths = False
 
-print('running score-driven model on goals-data')
-ft_goals = get_strengths_dictionary(f1_goals, variable_names='goals')
+print(f"Estimating model for GOALS")
 args = ('goals', False)
 opt = optimize.minimize(run_model, x0_b,args = args, method='BFGS')
-x_opt = opt.x
+strengths_opt, LL = run_model(opt.x, 'goals', True)
+
+#print(f"Estimating model for ATTEMPTS")
+# args = ('attempts', False)
+# opt_attempts = optimize.minimize(run_model, x0_b, args=args)
+# attempt_strengths_opt, LL2 = run_model(opt_attempts.x, 'attempts', True)
 
 
-print('running score-driven model on weighted_attempts-data')
-ft_attempts = get_strengths_dictionary(f1_weighted_attempts, variable_names='weighted_attempts_discrete')
-args = ('weighted_attempts_discrete', False)
-opt_attempts = optimize.minimize(run_model, x0_b, args = args)
-x_opt_attempts = opt_attempts.x
-#args_opt = (variable_names, True)
+# print(f"Estimating model for WEIGHTED_ATTEMPTS_DISCRETE")
+# args = ('weighted_attempts_discrete', False)
+# opt_weighted_attempts = optimize.minimize(run_model, x0_b, args = args)
+# weighted_attempt_strengths_opt, LL3 = run_model(opt_weighted_attempts.x, 'weighted_attempts_discrete', True)
 
 
-strengths_opt, LL = run_model(x_opt, 'goals', True)
-attempt_strengths_opt, LL2 = run_model(x_opt_attempts, 'weighted_attempts_discrete', True)
+
+
 
 def plot_dict_entry(ft,team, variable_names = 'goals'):
     if variable_names == 'goals':
         attack = [i[0] for i in ft[team]]
         defense = [i[1] for i in ft[team]]
         x = pd.DataFrame([attack, defense]).T
-        x.columns = ['goal_attack','goal_defense']
+        x.columns = ['attack','defense']
         x.plot()
 
     if variable_names == 'weighted_attempts_discrete':
@@ -281,7 +289,8 @@ def plot_dict_entry(ft,team, variable_names = 'goals'):
         x.plot()
         
 plot_dict_entry(strengths_opt,'Lyon')
-plot_dict_entry(attempt_strengths_opt,'Lyon', 'weighted_attempts_discrete')
+# plot_dict_entry(attempt_strengths_opt,'Lyon')
+#plot_dict_entry(weighted_attempt_strengths_opt, 'Lyon', 'weighted_attempts_discrete')
 
 # def game_likelihood():
 #     return 0

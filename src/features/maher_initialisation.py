@@ -31,7 +31,7 @@ def link_function(parameters, variables=['goals']):
             l2 = 10
         return l1,l2
 
-    elif variables == 'goals weighted_attempts':
+    elif variables == 'goals weighted_attempts_discrete':
         alpha_i, alpha_j, beta_i, beta_j, gam_i, gam_j, nu_i, nu_j,delta,eta = parameters
         try:
             l1 = min(10, math.exp(delta + alpha_i - beta_j + eta*(gam_i - nu_j)))
@@ -54,29 +54,33 @@ def link_function(parameters, variables=['goals']):
 
 def maher_estimation(x, *args):
     #x = strengths vector
-    first_year_data, teams = args
+    first_year_data, teams, variable_names = args
 
     df = first_year_data
     total_log_likelihood = 0
+    
+    #if variable_names == 'attempts':
     for index, match in df.iterrows():
-        #print(index)
+        h_col_name, a_col_name = 'home_'+variable_names, 'away_'+variable_names
+
         home = match['ht']
         away = match['at']
-        home_goals = match.home_goals
-        away_goals = match.away_goals
+        home_result = match[h_col_name]
+        away_result = match[a_col_name]
 
         alpha_i, alpha_j = x[teams[home][0]], x[teams[away][0]]
         beta_i, beta_j = x[teams[home][1]], x[teams[away][1]]
         delta, l3 = x[teams['delta'][0]], x[teams['l3'][0]]
         parameters = (alpha_i, alpha_j, beta_i, beta_j, delta)
-        l1, l2 = link_function(parameters, 'goals')  
+        # we actually estimate it the same way as the normal goals-based analysis, at first.
+        l1, l2 = link_function(parameters, 'goals')
 
-        game_log_likelihood = math.log( biv_poiss.pmf(home_goals,away_goals,l1,l2,l3))
-        total_log_likelihood +=game_log_likelihood
+        game_log_likelihood = math.log(
+            biv_poiss.prob_mass_func(home_result, away_result, l1, l2, l3))
+        total_log_likelihood += game_log_likelihood
 
-    #print('done calculating total likelihood once')
+#print('done calculating total likelihood once')
     return -1*total_log_likelihood
-
 
 def get_playing_team(df, season):
     temp = df[df['season'] == season].apply(
@@ -126,25 +130,28 @@ def start(first_year_data, first_year_participants, variable_names = 'goals'):
 
     
      
-    if variable_names == 'goals':
-        print("starting optimization")
-        x_ini = tuple([0]*(2*n+2))
+    # if variable_names == 'goals':
+    print(f"starting Maher-optimization for {variable_names} ")
+    x_ini = tuple([0]*(2*n+2))
 
-        con1 = {'type': 'eq', 'fun': constraint_alphas}
-        #con2 = {'type': 'ineq', 'fun': constraint_delta}
-        #con3 = {'type': 'ineq', 'fun': constraint_gamma}
-        cons = [con1]#, con2, con3]
+    con1 = {'type': 'eq', 'fun': constraint_alphas}
+    #con2 = {'type': 'ineq', 'fun': constraint_delta}
+    #con3 = {'type': 'ineq', 'fun': constraint_gamma}
+    cons = [con1]#, con2, con3]
 
 
-        boundaries = [(-np.inf, np.inf) if i < (2*n) else (0, 1) for i in range(2*n+2)]
-        options = {'eps': 1e-09,  # was 1e-09
-                'disp': True,
-                'maxiter': 500}
+    boundaries = [(-np.inf, np.inf) if i < (2*n) else (0, 1) for i in range(2*n+2)]
+    options = {'eps': 1e-09,  # was 1e-09
+            'disp': True,
+            'maxiter': 500}
 
-        results = scipy.optimize.minimize(maher_estimation, x_ini,options=options, args=(first_year_data, teams),
-                                        method='SLSQP', 
-                                        constraints=cons,
-                                        bounds=boundaries)
+    results = scipy.optimize.minimize(maher_estimation, x_ini,options=options, args=(first_year_data, teams, variable_names),
+                                    method='SLSQP', 
+                                    constraints=cons,
+                                    bounds=boundaries)
+
+    # if variable_names == 'weighted_attempts_discretized': 
+    #     print(f"starting Maher-optimization for {variable_names} ")
 
         
     return results, teams
@@ -168,11 +175,11 @@ def load_data(data_name):
     return df
 
 def get_maher_estimate(df, variable_names = "goals"):
-    print(f"RUNNING MAHER ESTIMATION")
+    print(f"MAHER: RUNNING MAHER ESTIMATION")
       
 
     year_one = min(df['season'])
-    print(f"first year detected as {year_one}, using variables {variable_names}")
+    print(f"MAHER: first year detected as {year_one}, using variables {variable_names}")
     first_year_data = df[df['season'] == year_one]
 
     first_participants = get_playing_team(first_year_data, year_one)
@@ -191,9 +198,56 @@ def get_maher_estimate(df, variable_names = "goals"):
     return strengths_dict
 
 
-#strengths_debug = get_maher_estimate('debug')
+# df = load_data('matches_fr_labeled89294.pkl')
+# strengths_debug = get_maher_estimate(df, 'weighted_attempts_discrete')
 
 toc = time.time()
 
 print(f"elapsed time = {toc-tic} seconds.. for Maher initialisation")
 
+
+
+
+#if variable_names == 'goals':
+    #     for index, match in df.iterrows():
+    #         #print(index)
+    #         home = match['ht']
+    #         away = match['at']
+    #         home_goals = match.home_goals
+    #         away_goals = match.away_goals
+
+    #         alpha_i, alpha_j = x[teams[home][0]], x[teams[away][0]]
+    #         beta_i, beta_j = x[teams[home][1]], x[teams[away][1]]
+    #         delta, l3 = x[teams['delta'][0]], x[teams['l3'][0]]
+    #         parameters = (alpha_i, alpha_j, beta_i, beta_j, delta)
+    #         l1, l2 = link_function(parameters, 'goals')
+
+    #         game_log_likelihood = math.log(
+    #             biv_poiss.prob_mass_func(home_goals, away_goals, l1, l2, l3))
+    #         total_log_likelihood +=game_log_likelihood
+
+    #     #print('done calculating total likelihood once')
+    #     return -1*total_log_likelihood
+
+    # if variable_names == 'weighted_attempts_discrete':
+    #     for index, match in df.iterrows():
+    #         'home_weighted_attempts_discrete'
+    #         'away_weighted_attempts_discrete'
+
+    #         home = match['ht']
+    #         away = match['at']
+    #         home_result = match['home_weighted_attempts_discrete']
+    #         away_result = match['away_weighted_attempts_discrete']
+
+    #         alpha_i, alpha_j = x[teams[home][0]], x[teams[away][0]]
+    #         beta_i, beta_j = x[teams[home][1]], x[teams[away][1]]
+    #         delta, l3 = x[teams['delta'][0]], x[teams['l3'][0]]
+    #         parameters = (alpha_i, alpha_j, beta_i, beta_j, delta)
+    #         l1, l2 = link_function(parameters, 'goals') #we actually estimate it the same way as the normal goals-based analysis, at first.
+
+    #         game_log_likelihood = math.log(
+    #             biv_poiss.prob_mass_func(home_result, away_result, l1, l2, l3))
+    #         total_log_likelihood += game_log_likelihood
+
+    #     #print('done calculating total likelihood once')
+    #     return -1*total_log_likelihood
