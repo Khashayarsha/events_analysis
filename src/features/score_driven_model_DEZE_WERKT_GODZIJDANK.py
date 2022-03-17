@@ -93,6 +93,7 @@ def get_f1(data_name,variable_names):
 
 
 f1_goals = get_f1(data_name, 'goals')
+f1_attempts = get_f1(data_name, 'attempts')
 f1_weighted_attempts = get_f1(data_name, 'weighted_attempts_discrete')
 #initialize the using Maher  <DONE>
 
@@ -151,10 +152,16 @@ def get_strengths_dictionary(f1, variable_names = 'goals'):
         ft = {team: [f1_goals.get(team)] for team in f1_goals.keys()}    
         for team in non_first_partic:
             ft.update({team: [(0, 0)]})
+    if variable_names == 'attempts':
+        ft = {team: [f1_goals.get(team)] for team in f1_goals.keys()}
+        for team in non_first_partic:
+            ft.update({team: [(0, 0)]})
     if variable_names == 'weighted_attempts_discrete':
         ft = {team: [f1_weighted_attempts.get(team)] for team in f1_weighted_attempts.keys()}
         for team in non_first_partic:
             ft.update({team: [(0, 0)]})
+    if variable_names not in ['goals', 'attempts', 'weighted_attemtps']:
+        print(f"SDM get_strengths_dict says: Variable name {variable_names} not recognized.")
 
     return deepcopy(ft)
 
@@ -179,9 +186,15 @@ def run_model(params, *args):
     if variable_names == 'goals':
         a1, a2, b1, b2, delta, l3 = params
         ft_local = deepcopy(ft_goals)
-    if variable_names == 'weighted_attempts_discrete':
+    if variable_names == 'attempts':
         a1, a2, b1, b2, delta, l3 = params
         ft_local = deepcopy(ft_attempts)
+    if variable_names == 'weighted_attempts_discrete':
+        a1, a2, b1, b2, delta, l3 = params
+        ft_local = deepcopy(ft_weighted_attempts)
+
+    if return_strengths: 
+        results_dict = {match_id:{'h_est_'+variable_names:[] , 'a_est_'+variable_names: [] } for match_id in df.id_odsp}
 
 
     total_likelihood = 0 
@@ -220,6 +233,8 @@ def run_model(params, *args):
             ft_local[home_team].append((alpha_i_next, beta_i_next))
             ft_local[away_team].append((alpha_j_next, beta_j_next))
 
+            #results_dict[match.id_odsp]['h_est_'+variable_names].append()
+
             p = biv_poiss.prob_mass_func(home_result, away_result, l1, l2, l3)
 
             if p > 0:
@@ -240,48 +255,84 @@ def run_model(params, *args):
 
 
 x0 = [0.1, 0.1,   0.95, 0.95, 0.9, 0.9, 0.9, 0.9]
-x0_b = [0.2, 0.2, 0.09, 0.9, 0.2, 0.2]  # a1, a2, l3 
+x0_b = [0.2, 0.2, 0.09, 0.9, 0.2, 0.2]  # a1, a2, b1, b2, delta, l3
 # options={'maxfev':100}
 
 
 #variable_names = 'goals'
 #return_strengths = False
 
-print('running score-driven model on goals-data')
+print(f"Estimating model for GOALS")
 ft_goals = get_strengths_dictionary(f1_goals, variable_names='goals')
 args = ('goals', False)
 opt = optimize.minimize(run_model, x0_b,args = args, method='BFGS')
-x_opt = opt.x
+strengths_opt, LL = run_model(opt.x, 'goals', True)
+
+# print(f"Estimating model for ATTEMPTS")
+# ft_attempts = get_strengths_dictionary(f1_attempts,variable_names = 'attempts')
+# args = ('attempts', False)
+# opt_attempts = optimize.minimize(run_model, x0_b, args=args)
+# attempt_strengths_opt, LL2 = run_model(opt_attempts.x, 'attempts', True)
 
 
-print('running score-driven model on weighted_attempts-data')
-ft_attempts = get_strengths_dictionary(f1_weighted_attempts, variable_names='weighted_attempts_discrete')
+# print(f"Estimating constrained model for ATTEMPTS")
+# ft_attempts = get_strengths_dictionary(f1_attempts, variable_names='attempts')
+# args = ('attempts', False)
+
+
+# bnds = [(-2, 2), (-2, 2), (-0.99, 0.99),
+#         (-0.99, 0.99), (15, 15), (-0.99, 0.99) ]
+# opt_attempts = optimize.minimize(run_model, x0_b, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+#                                        'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+# attempt_strengths_opt, LL2 = run_model(opt_attempts.x, 'attempts', True)
+
+
+
+
+
+
+
+
+print(f"Estimating model for WEIGHTED ATTEMPTS")
+ft_weighted_attempts = get_strengths_dictionary(f1_weighted_attempts, variable_names='weighted_attempts_discrete')
 args = ('weighted_attempts_discrete', False)
-opt_attempts = optimize.minimize(run_model, x0_b, args = args)
-x_opt_attempts = opt_attempts.x
+opt_weighted_attempts = optimize.minimize(run_model, x0_b, args = args)
+weighted_attempt_strengths_opt, LL3 = run_model(opt_weighted_attempts.x, 'weighted_attempts_discrete', True)
 #args_opt = (variable_names, True)
 
 
-strengths_opt, LL = run_model(x_opt, 'goals', True)
-attempt_strengths_opt, LL2 = run_model(x_opt_attempts, 'weighted_attempts_discrete', True)
+
+
+
+
+
+#attempt_strengths_opt, LL2 = run_model(x_opt_attempts, 'weighted_attempts_discrete', True)
 
 def plot_dict_entry(ft,team, variable_names = 'goals'):
     if variable_names == 'goals':
         attack = [i[0] for i in ft[team]]
         defense = [i[1] for i in ft[team]]
         x = pd.DataFrame([attack, defense]).T
-        x.columns = ['goal_attack','goal_defense']
-        x.plot()
+        x.columns = ['attack_goal','defense_goal']        
+        x.plot(title = team+'__'+variable_names)
 
     if variable_names == 'weighted_attempts_discrete':
         attack = [i[0] for i in ft[team]]
         defense = [i[1] for i in ft[team]]
         x = pd.DataFrame([attack, defense]).T
-        x.columns = ['home_attempt_intensity', 'home_defense_intensity']
-        x.plot()
+        x.columns = ['attack_weighted_attempt', 'defense_weighted_attempt']
+        x.plot(title=team+'__'+variable_names)
+    else: 
+        attack = [i[0] for i in ft[team]]
+        defense = [i[1] for i in ft[team]]
+        x = pd.DataFrame([attack, defense]).T
+        x.columns = ['attack_'+variable_names, 'defense_'+variable_names]
+        x.plot(title=team+'__'+variable_names)
+
         
 plot_dict_entry(strengths_opt,'Lyon')
-plot_dict_entry(attempt_strengths_opt,'Lyon', 'weighted_attempts_discrete')
+#plot_dict_entry(attempt_strengths_opt, 'Lyon', 'attempts')
+plot_dict_entry(weighted_attempt_strengths_opt, 'Lyon', 'weighted_attempts_discrete')
 
 # def game_likelihood():
 #     return 0

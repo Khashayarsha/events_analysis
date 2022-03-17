@@ -24,22 +24,22 @@ def prob_mass_func(x,y, l1, l2, l3):
 
     if result < 0:
         print(f"ERROR IN EVALUATION OF PROBABILITY MASS FUNCTION: \n prob = {result} using parameters x={x},y={y}, l1,l2,l3 = {l1,l1,l3}")
-    return max(0.000001,result)
+    return max(0.001,result)
 
 
 def link_function(ai, aj, bi, bj, delta):  # M's formulering
 
     try:
-        l1 = min(10, math.exp(delta + ai - bj))
+        l1 = min(50, math.exp(delta + ai - bj))
         l1 = max(0.1, l1)
     except OverflowError:
-        l1 = 10
+        l1 = 50
 
     try:
-        l2 = min(10, math.exp(aj - bi))
+        l2 = min(50, math.exp(aj - bi))
         l2 = max(0.1, l2)
     except OverflowError:
-        l2 = 10
+        l2 = 50
 
     return l1, l2
 
