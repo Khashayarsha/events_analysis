@@ -27,7 +27,7 @@ def prob_mass_func(x,y, l1, l2, l3):
     return max(0.001,result)
 
 
-def link_function(ai, aj, bi, bj, delta):  # M's formulering
+def link_function(ai, aj, bi, bj, delta):  #
 
     try:
         l1 = min(50, math.exp(delta + ai - bj))
@@ -66,3 +66,36 @@ def score(x, y, l1, l2, l3):
     res = [x-l1-U, y-l2-U, l2-y+U, l1-x+U]
 
     return res
+
+
+def link_function_ext1(ai, aj, bi, bj, delta, eta, gamma_i, nu_j, ):  #
+
+    try:
+        l1 = min(50, math.exp(delta + ai - bj +eta*(gamma_i - nu_j)))
+        l1 = max(0.1, l1)
+    except OverflowError:
+        l1 = 50
+
+    try:
+        l2 = min(50, math.exp(aj - bi))
+        l2 = max(0.1, l2)
+    except OverflowError:
+        l2 = 50
+
+    return l1, l2
+
+
+def link_function_ext2(ai, aj, bi, bj, delta, eta1, eta2, gamma_i, gamma_j, nu_i, nu_j):
+    try:
+        l1 = min(50, math.exp(delta + ai - bj + eta1*(gamma_i - nu_j)))
+        l1 = max(0.1, l1)
+    except OverflowError:
+        l1 = 50
+
+    try:
+        l2 = min(50, math.exp(aj - bi + eta2*(gamma_j - nu_i)))
+        l2 = max(0.1, l2)
+    except OverflowError:
+        l2 = 50
+
+    return l1, l2
