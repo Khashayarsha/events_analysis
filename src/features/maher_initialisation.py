@@ -13,44 +13,70 @@ import time
 
 tic = time.time()
 
-def link_function(parameters, variables=['goals']):
+# def link_function(parameters, variables=['goals']):
 
-    if variables == 'goals':
-        alpha_i, alpha_j, beta_i, beta_j, delta = parameters 
+#     if variables == 'goals':
+#         alpha_i, alpha_j, beta_i, beta_j, delta = parameters 
 
-        try:
-            l1 = min(10, math.exp( delta + alpha_i - beta_j))
-            l1 = max(0.1, l1)
-        except OverflowError:
-            l1 = 10
+#         try:
+#             l1 = min(10, math.exp( delta + alpha_i - beta_j))
+#             l1 = max(0.1, l1)
+#         except OverflowError:
+#             l1 = 10
                 
-        try:
-            l2 = min(10, math.exp(alpha_j - beta_i))
-            l2 = max(0.1, l2)
-        except OverflowError:
-            l2 = 10
-        return l1,l2
+#         try:
+#             l2 = min(10, math.exp(alpha_j - beta_i))
+#             l2 = max(0.1, l2)
+#         except OverflowError:
+#             l2 = 10
+#         return l1,l2
 
-    elif variables == 'goals weighted_attempts_discrete':
-        alpha_i, alpha_j, beta_i, beta_j, gam_i, gam_j, nu_i, nu_j,delta,eta = parameters
+#     elif variables == 'goals weighted_attempts_discrete':
+#         alpha_i, alpha_j, beta_i, beta_j, gam_i, gam_j, nu_i, nu_j,delta,eta = parameters
+#         try:
+#             l1 = min(10, math.exp(delta + alpha_i - beta_j + eta*(gam_i - nu_j)))
+#             l1 = max(0.1, l1)
+#         except OverflowError:
+#             l1 = 10
+
+#         try:
+#             l2 = min(10, math.exp(alpha_j - beta_i + eta*(gam_j - nu_i)))
+#             l2 = max(0.1, l2)
+#         except OverflowError:
+#             l2 = 10
+
+#         return l1, l2
+#     else: 
+#         print('unexpected variable type used')
+#         return False
+
+eps = 1e-14
+thresh = 30
+
+
+def link_function(parameters, variables=['goals']):  #
+    #exponent1= np.clip(delta + ai - bj, a_min =-5, a_max = 20 )  # bestond eerst niet
+    #exponent2 = np.clip(aj - bi, a_min= -5, a_max = 20)
+    if variables == 'goals':
+        ai, aj, bi, bj, delta = parameters
+        exponent1 = delta + ai - bj
         try:
-            l1 = min(10, math.exp(delta + alpha_i - beta_j + eta*(gam_i - nu_j)))
-            l1 = max(0.1, l1)
+            l1 = min(thresh, math.exp(exponent1))  # delta + ai - bj))
+            l1 = max(eps, l1)
         except OverflowError:
-            l1 = 10
+            print('OVERFLOW ERROR IN MAHER INITIALISATION')
+            l1 = thresh  # was eerst 50, daarvoor 10
 
         try:
-            l2 = min(10, math.exp(alpha_j - beta_i + eta*(gam_j - nu_i)))
-            l2 = max(0.1, l2)
+            l2 = min(thresh, math.exp(aj - bi))
+            l2 = max(eps, l2)
         except OverflowError:
-            l2 = 10
+            print('OVERFLOW ERROR IN MAHER INITIALISATION')
+            l2 = thresh
 
         return l1, l2
-    else: 
-        print('unexpected variable type used')
-        return False
 
- 
+
 
 def maher_estimation(x, *args):
     #x = strengths vector
