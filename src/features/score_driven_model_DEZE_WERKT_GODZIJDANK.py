@@ -419,7 +419,7 @@ def run_model(params, *args):
         a1, a2, delta, l3 = params #a1, a2, b1, b2, delta, l3 = params
         ft_local = deepcopy(ft_goals)
     if variable_names == 'attempts':
-        a1, a2, b1, b2, delta, l3 = params
+        a1, a2, delta, l3 = params      #a1, a2, b1, b2, delta, l3 = params
         ft_local = deepcopy(ft_attempts)
     if variable_names == 'weighted_attempts_discrete':
         a1, a2, b1, b2, delta, l3 = params
@@ -432,9 +432,9 @@ def run_model(params, *args):
     if return_strengths: 
         match_id_dict = {match_id:{'home':[] , 'away': [] } for match_id in df.id_odsp}
 
-    if variable_names == 'goals':        
-        b1 = 1
-        b2 = 1
+    #if variable_names == 'goals':        
+    b1 = 1
+    b2 = 1
 
     total_likelihood = 0 
 
@@ -526,16 +526,18 @@ strengths_opt, match_dict_goals, LL = run_model(g_optimum_no_b, 'goals', True)
 # attempt_strengths_opt, match_dict_attempts, LL2 = run_model(opt_attempts.x, 'attempts', True)
 
  
-# print(f"Estimating constrained model for ATTEMPTS-----------------------------------------------")
-# ft_attempts = get_strengths_dictionary(f1_attempts, variable_names='attempts')
-# args = ('attempts', False)
+print(f"Estimating constrained model for ATTEMPTS-----------------------------------------------")
+ft_attempts = get_strengths_dictionary(f1_attempts, variable_names='attempts')
+args = ('attempts', False)
 
 
-# bnds = [(-2, 2), (-2, 2), (-0.99, 0.99),
-#         (-0.99, 0.99), (-30, 100), (-0.99, 100) ]
-# opt_attempts = optimize.minimize(run_model, x0_b, args=args, method='SLSQP', bounds=bnds, tol=None, callback=None, options={
-#                                        'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
-# attempt_strengths_opt, match_dict_attempts, LL2 = run_model(opt_attempts.x, 'attempts', True)
+bnds = [(-1, 1), (-1, 1), (-6, 6),
+        (0, 0.99) ]
+opt_attempts = optimize.minimize(run_model, x0_b, args=args, method='SLSQP', bounds=bnds, tol=None, callback=None, options={
+                                       'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+attempt_strengths_opt, match_dict_attempts, LL2 = run_model(opt_attempts.x, 'attempts', True)
+
+
 
 # print(f"Estimating model for WEIGHTED ATTEMPTS-----------------------------------------------------------")
 ft_weighted_attempts = get_strengths_dictionary(f1_weighted_attempts, variable_names='weighted_attempts_discrete')

@@ -1,6 +1,6 @@
 import math 
 import numpy as np
-thresh = 10
+thresh = 30
 eps = 1e-12
 
 # def bivariate_poisson_like(a, b,  l1, l2, l3, log = False):
