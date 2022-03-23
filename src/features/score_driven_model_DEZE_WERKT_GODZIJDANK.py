@@ -13,7 +13,8 @@ import biv_poiss
 #import maher_initialisation
 from scipy import optimize
 import math
-
+from scipy import stats
+from scipy.stats.distributions import chi2
 
 def save_logbook(dic, name = 'logbook.pkl'):
     with open(name, 'wb') as file:
@@ -181,6 +182,12 @@ def get_strengths_dictionary(f1, variable_names = 'goals'):
             team)] for team in f1_attempt_count_0219.keys()}
         for team in non_first_partic:
             ft.update({team: [(0, 0)]})
+
+    if variable_names == 'counted_attempts_0.13':
+        ft = {team: [f1_attempt_count_0219.get(
+            team)] for team in f1_attempt_count_0219.keys()}
+        for team in non_first_partic:
+            ft.update({team: [(0, 0)]})
     #if variable_names not in ['goals', 'attempts', 'weighted_attempts_discrete']:
      #   print(f"SDM get_strengths_dict says: Variable name {variable_names} not recognized.")
 
@@ -327,7 +334,7 @@ def run_model_extended3(params, *args):
     return -total_likelihood
 
 
-
+neg_count2 = [0]
 def run_model_extended(params, *args):
 
     variable_names, return_strengths, ft_local,  match_id_dict, extension_type = args # df, latter_seasons, all_teams, match_id_dict = args
@@ -362,8 +369,11 @@ def run_model_extended(params, *args):
 
             home_strengths = alpha_i, beta_i = ft_local[home_team][-1][0:2]
             away_strengths = alpha_j, beta_j = ft_local[away_team][-1][0:2]
-            home_wa_strengths = gamma_i, nu_i = match_id_dict[match.id_odsp]['home'][0]
+            home_wa_strengths = gamma_i, nu_i = match_id_dict[match.id_odsp]['home'][0]             
             away_wa_strengths = gamma_j, nu_j = match_id_dict[match.id_odsp]['away'][0]
+
+
+             
 
             # if return_strengths:           This is used in the other run_model to construct the id-dict
             #     match_id_dict[match.id_odsp]['home'].append(
@@ -399,6 +409,8 @@ def run_model_extended(params, *args):
             p = biv_poiss.prob_mass_func(home_result, away_result, l1, l2, l3)
 
             if p > 0:
+                if return_strengths: 
+                    neg_count2[0]+=1
                 total_likelihood = total_likelihood + math.log(p) #p  # math.log(p)
 
         for team in all_teams.difference(round_participants):
@@ -412,6 +424,7 @@ def run_model_extended(params, *args):
     return -total_likelihood
 
 
+neg_count = [0] 
 def run_model(params, *args):
     #init teams that aren't playing in first year to be 0 
     variable_names, return_strengths = args
@@ -429,6 +442,10 @@ def run_model(params, *args):
         ft_local = deepcopy(ft_goals)
     if variable_names == 'counted_attempts_0.219':
         a1, a2, delta, l3 = params 
+        ft_local = deepcopy(ft_goals)
+        
+    if variable_names == 'counted_attempts_0.13':
+        a1, a2, delta, l3 = params
         ft_local = deepcopy(ft_goals)
         
 
@@ -487,6 +504,8 @@ def run_model(params, *args):
                 p = biv_poiss.prob_mass_func(home_result, away_result, l1, l2, l3)
 
                 if p > 0: 
+                    if return_strengths:
+                        neg_count[0] +=1 
                     total_likelihood = total_likelihood + math.log(p) 
             else:
                 logp = biv_poiss.log_pmf(home_result, away_result, l1, l2, l3) 
@@ -517,9 +536,17 @@ x0_b = [0.2, 0.2, 0.2, 0.2]  # a1, a2, delta, l3
 print(f"Estimating model for GOALS")
 ft_goals = get_strengths_dictionary(f1_goals, variable_names='goals')
 args = ('goals', False)
-opt = optimize.minimize(run_model, x0_b,args = args, method='BFGS')
+
+x0_goals = [0.00182, 0.0166, 0.33, 0.05]
+bnds = [(-0.5, 0.5), (-0.5, 0.5), (-6, 20),   (0, 20)]
+opt_goals = optimize.minimize(run_model, x0_goals, args=args, method='SLSQP', bounds=bnds, tol=None, callback=None, options={
+    'disp': True, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-12, 'maxfun': 1500000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+#opt_attempts = optimize.minimize(run_model, x0_attempts,args = args2, method='BFGS')
+
+
+#opt = optimize.minimize(run_model, x0_b,args = args, method='BFGS')
 #g_optimum_no_b = [0.02030879, 0.01928687, 0.32837571, 0.05405947]
-strengths_opt, match_dict_goals, LL = run_model(opt.x, 'goals', True)
+strengths_opt, match_dict_goals, LL = run_model(opt_goals.x, 'goals', True)
 
 #g_optimum = [0.02056461, 0.01779263, 0.99449382, 0.99792438, 0.34076973, 0.02790289]
 #g_optimum = [0.02056461, 0.01779263, 0.34076973, 0.02790289]  # [0.02056461, 0.01779263, 0.99449382,             0.99792438, 0.34076973, 0.02790289]
@@ -558,13 +585,13 @@ bnds = [(-1, 1), (-1, 1), (-5, 20),    #a1 a2 delta
 extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
     'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
 #extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='BFGS')
-extended_strengths_opt_dict, match_dict_extended, LL4 = run_model_extended(
+extended_strengths_opt_dict, _, LL4 = run_model_extended(
     extended_strengths_opt.x, 'goals', True, ft_goals,  match_dict_attempts, 1)
 # extended_strengths_opt.x = [ 0.020,  0.0177, 0.9946, 0.9979,  0.3257, 0.01853, -0.01364  ]
                             #   a1       a2      b1       b2     delta     l3       eta
 
 
-print('estimating model extension 1 (goals, attempts eta1) -----------------------------------------------------------------------')
+print('estimating model extension 2  (goals, attempts eta1 eta2) -----------------------------------------------------------------------')
 # (var_names, return_strengths, ft_local,  match_id_dict )
 args = ('goals', False, ft_goals,  match_dict_attempts, 2)
 # a1, a2, b1, b2, delta, l3, eta = params
@@ -575,7 +602,7 @@ bnds = [(-1, 1), (-1, 1), (-5, 20),  # a1 a2 delta
 extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
     'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
 #extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='BFGS')
-extended_strengths_opt_dict, match_dict_extended, LL5 = run_model_extended(
+extended_strengths_opt_dict, _, LL5 = run_model_extended(
     extended_strengths_opt.x, 'goals', True, ft_goals,  match_dict_attempts, args[-1])
 
 
@@ -591,10 +618,88 @@ opt_counted_attempts = optimize.minimize(run_model, x0_counted_attempts, args=ar
 #opt_attempts = optimize.minimize(run_model, x0_attempts,args = args2, method='BFGS')
 # opt_est = [1.43490024e-02, 3.33103092e-02,
 #                   2.55336435e-01, 2.95511352e-11]
-counted_attempt_strengths_opt, counted_match_dict_attempts, LL3 = run_model(
+counted_attempt_strengths_opt, counted_match_dict_attempts0219, LL3 = run_model(
     opt_counted_attempts.x, 'attempts', True)
 
 
+print('estimating model extension 1  (goals, counted_attempts eta1 ) -----------------------------------------------------------------------')
+# (var_names, return_strengths, ft_local,  match_id_dict )
+args = ('goals', False,
+        ft_goals,  counted_match_dict_attempts0219, 1)
+# a1, a2, b1, b2, delta, l3, eta = params
+x0_extended = [0.01884066, 0.01725225, 0.32985728, 0.0232088, 0.00354257]
+
+bnds = [(-1, 1), (-1, 1), (-5, 20),  # a1 a2 delta
+        (0, 20), (-5, 5)]      # l3 eta1  
+extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+    'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+#extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='BFGS')
+extended_strengths_opt_dict, _, LL5 = run_model_extended(
+    extended_strengths_opt.x, 'goals', True, ft_goals,  counted_match_dict_attempts0219, args[-1])
+
+
+print('estimating model extension 2  (goals, counted_attempts eta1 eta2 ) -----------------------------------------------------------------------')
+# (var_names, return_strengths, ft_local,  match_id_dict )
+args = ('goals', False,
+        ft_goals,  counted_match_dict_attempts0219, 2)
+# a1, a2, b1, b2, delta, l3, eta = params
+x0_extended = [0.01884066, 0.01725225, 0.32985728, 0.0232088, 0.00354257, 0.03]
+
+bnds = [(-1, 1), (-1, 1), (-5, 20),  # a1 a2 delta
+        (0, 20), (-5, 5),  (-5, 5)]      # l3 eta1 eta2
+extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+    'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+#extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='BFGS')
+extended_strengths_opt_dict, _, LL5 = run_model_extended(
+    extended_strengths_opt.x, 'goals', True, ft_goals,  counted_match_dict_attempts0219, args[-1])
+
+
+print(f"Estimating constrained model for COUNTED_ATTEMPTS013-----------------------------------------------")
+ft_counted013 = get_strengths_dictionary(
+    f1_attempt_count_013, variable_names='counted_attempts_0.13')
+args2 = ('counted_attempts_0.13', False)
+
+x0_counted_attempts = [0.05, 0.05, 0.3, 0.1]
+bnds = [(-0.5, 0.5), (-0.5, 0.5), (-6, 20),   (0, 20)]
+opt_counted_attempts013 = optimize.minimize(run_model, x0_counted_attempts, args=args2, method='SLSQP', bounds=bnds, tol=None, callback=None, options={
+    'disp': True, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-12, 'maxfun': 1500000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+#opt_attempts = optimize.minimize(run_model, x0_attempts,args = args2, method='BFGS')
+# opt_est = [1.43490024e-02, 3.33103092e-02,
+#                   2.55336435e-01, 2.95511352e-11]
+counted_attempt_strengths_opt013, counted_match_dict_attempts013, LL3 = run_model(
+    opt_counted_attempts013.x, 'attempts', True)
+
+
+print('estimating model extension 1  (goals, counted_attempts013 eta1 ) -----------------------------------------------------------------------')
+# (var_names, return_strengths, ft_local,  match_id_dict )
+args = ('goals', False,
+        ft_goals,  counted_match_dict_attempts013, 1)
+# a1, a2, b1, b2, delta, l3, eta = params
+x0_extended = [0.01884066, 0.01725225, 0.32985728, 0.0232088, 0.00354257]
+
+bnds = [(-1, 1), (-1, 1), (-5, 20),  # a1 a2 delta
+        (0, 20), (-5, 5)]      # l3 eta1
+extended_strengths_opt013 = optimize.minimize(run_model_extended, x0_extended, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+    'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+#extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='BFGS')
+extended_strengths_opt_dict013, _, LL5 = run_model_extended(
+    extended_strengths_opt013.x, 'goals', True, ft_goals,  counted_match_dict_attempts013, args[-1])
+
+
+print('estimating model extension 2  (goals, counted_attempts013 eta1 eta2 ) -----------------------------------------------------------------------')
+# (var_names, return_strengths, ft_local,  match_id_dict )
+args = ('goals', False,
+        ft_goals,  counted_match_dict_attempts013, 2)
+# a1, a2, b1, b2, delta, l3, eta = params
+x0_extended = [0.01884066, 0.01725225, 0.32985728, 0.0232088, 0.00354257, 0.03]
+
+bnds = [(-1, 1), (-1, 1), (-5, 20),  # a1 a2 delta
+        (0, 20), (-5, 5),  (-5, 5)]      # l3 eta1 eta2
+extended_strengths_opt0132 = optimize.minimize(run_model_extended, x0_extended, args=args, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+    'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+#extended_strengths_opt = optimize.minimize(run_model_extended, x0_extended, args=args, method='BFGS')
+extended_strengths_opt_dict0132, _, LL5 = run_model_extended(
+    extended_strengths_opt0132.x, 'goals', True, ft_goals,  counted_match_dict_attempts013, args[-1])
 
 
 
@@ -706,8 +811,16 @@ if run_counted:
     args4 = ('goals counted_attempts_0.219', False, ft_goals, ft_counted0219, 1)
 
     x0_extended4 = [0.02, 0.02, 0.02, 0.02,  0.3, 0.3,  0.05, 0.05, 0.05]
-    extended_strengths_opt4 = optimize.minimize(
-        run_model_extended3, x0_extended4, args=args4, method='BFGS')
+    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1)  # a1 a2 a3 a4
+            (-5, 10), (-5, 10),  (0, 10), (0, 10), (-5, 5)]      # delta1 delta2 l3 theta3 eta1
+    #a1,  a2, a3, a4,  delta1, delta2, l3, theta3, eta1
+    extended_strengths_opt4 = optimize.minimize(run_model_extended3, x0_extended4, args=args4, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+        'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+
+
+
+    #extended_strengths_opt4 = optimize.minimize(run_model_extended3, x0_extended4, args=args4, method='BFGS')
+        
     #extended_strengths_opt4.x = [0.02035264,  0.01928753,  0.02955609,  0.0073123,  0.33332439,
                                 # 1.23161871,  0.053819, -0.00170566,  0.00524042]
     goal_strengths_simultaan_dict2, counted_strengths_simultaan_dict, LL7 = run_model_extended3(
@@ -715,6 +828,9 @@ if run_counted:
 
 
     print(f'SUCCESFULLY (?) FINISHED ESTIMATING EXTENSION 4')
+
+
+    
 
 
     print('estimating model extension 5  (simulataneous estimation, using attempt_counts_0219) ------------------------')
@@ -783,6 +899,38 @@ plot_dict_entry(goal_strengths_simultaan_dict3, 'Lyon',
 plot_dict_entry(counted_strengths_simultaan_dict2,
                 'Lyon', 'counted_attempts_strengths_ext2')
 
+
+def compare_graphs(ft1, ft2, team, variable_names='goals', save= False):
+    # if variable_names == 'goals':
+    #     attack = [i[0] for i in ft[team]]
+    #     defense = [i[1] for i in ft[team]]
+    #     x = pd.DataFrame([attack, defense]).T
+    #     x.columns = ['attack_goal','defense_goal']
+    #     x.plot(title = team+'__'+variable_names)
+
+    # if variable_names == 'weighted_attempts_discrete':
+    #     attack = [i[0] for i in ft[team]]
+    #     defense = [i[1] for i in ft[team]]
+    #     x = pd.DataFrame([attack, defense]).T
+    #     x.columns = ['attack_weighted_attempt', 'defense_weighted_attempt']
+    #     x.plot(title=team+'__'+variable_names)
+    # else:
+    attack1 = [i[0] for i in ft1[team]]
+    defense1 = [i[1] for i in ft1[team]]
+    attack2 = [i[0] for i in ft2[team]]
+    defense2 = [i[1] for i in ft2[team]]
+    x1 = pd.DataFrame([attack1, defense1, attack2, defense2]).T
+    x1.columns = ['atk_'+variable_names + '_base',
+                  'def_'+variable_names + '_base', 'atk_'+variable_names + '_extended',
+                  'def_'+variable_names + '_extended']
+
+    x1.plot(title=team+'__'+variable_names)
+
+    #fig = x1.plot(title=team+'__'+variable_names).get_figure()
+    if save != False:
+        fig = x1.plot(title=team+'__'+variable_names).get_figure()
+        fig.savefig(team+'__'+variable_names+'.png', dpi=400)
+
 # def game_likelihood():
 #     return 0
 
@@ -806,8 +954,7 @@ plot_dict_entry(counted_strengths_simultaan_dict2,
 # save_dict2 = {'x0': x0_extended3, 'optimizer_results': extended_strengths_opt3,
 #               'goal_strengths': goal_strengths_simultaan_dict, 'wa_strengths': weighted_strengths_simultaan_dict, 'likelihood': LL6}
 
-from scipy import stats
-from scipy.stats.distributions import chi2
+
 LL1 = -LL
 LL2 = -LL6
 
@@ -821,8 +968,38 @@ LR = likelihood_ratio(LL1, LL2)
 dof = 6  # Degrees of freedom
 p = chi2.sf(LR, dof)
 
-print('LR: ', LR, 'p: ', p)
+print(
+    f"Likelihood-ratio statistic {likelihood_ratio(LL1, LL2)}, p-value: {chi2.sf(LR, dof)}")
 
 
 
 # %%
+# def plot_dict_entry(ft1,ft2, team, variable_names='goals', save = False):
+#     # if variable_names == 'goals':
+#     #     attack = [i[0] for i in ft[team]]
+#     #     defense = [i[1] for i in ft[team]]
+#     #     x = pd.DataFrame([attack, defense]).T
+#     #     x.columns = ['attack_goal','defense_goal']
+#     #     x.plot(title = team+'__'+variable_names)
+
+#     # if variable_names == 'weighted_attempts_discrete':
+#     #     attack = [i[0] for i in ft[team]]
+#     #     defense = [i[1] for i in ft[team]]
+#     #     x = pd.DataFrame([attack, defense]).T
+#     #     x.columns = ['attack_weighted_attempt', 'defense_weighted_attempt']
+#     #     x.plot(title=team+'__'+variable_names)
+#     # else:
+#     attack1 = [i[0] for i in ft1[team]]
+#     defense1= [i[1] for i in ft1[team]]
+#     attack2 = [i[0] for i in ft2[team]]
+#     defense2= [i[1] for i in ft2[team]]
+#     x1 = pd.DataFrame([attack1, defense1]).T
+#     x1.columns = ['attack_'+variable_names, 'defense_'+variable_names]
+#     x2 = pd.DataFrame([attack2, defense2]).T
+#     x2.columns = ['attack_'+variable_names, 'defense_'+variable_names]
+#     x1.plot(title=team+'__'+variable_names)
+#     x2.plot(title = team + '__'+variable_names)
+    
+#     fig = x1.plot(title=team+'__'+variable_names).get_figure()
+#     if save != False:
+#         fig.savefig(team+'__'+variable_names+'.png', dpi=400)
