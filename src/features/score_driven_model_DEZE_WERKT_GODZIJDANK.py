@@ -15,6 +15,7 @@ from scipy import optimize
 import math
 from scipy import stats
 from scipy.stats.distributions import chi2
+import seaborn as sns
 
 def save_logbook(dic, name = 'logbook.pkl'):
     with open(name, 'wb') as file:
@@ -835,8 +836,9 @@ if run_counted:
 
     #extended_strengths_opt4 = optimize.minimize(run_model_extended3, x0_extended4, args=args4, method='BFGS')
         
-    #extended_strengths_opt4.x = [0.02035264,  0.01928753,  0.02955609,  0.0073123,  0.33332439,
-                                # 1.23161871,  0.053819, -0.00170566,  0.00524042] 23maart
+    #extended_strengths_opt4.x = [5.91747024e-02, 1.94893439e-01, 7.70492206e-02, 7.59881778e-02,
+    #9.19586433e-01, 4.35501893e-01, 7.20109299e-01, 4.14923898e+02,
+    #1.98683174e-02] 23maart
     goal_strengths_simultaan_dict2, counted_strengths_simultaan_dict, LL7 = run_model_extended3(
         extended_strengths_opt4.x, 'goals counted_attempts_0.219', True, ft_goals,  ft_counted0219, args4[-1])
 
@@ -855,9 +857,8 @@ if run_counted:
     x0_extended5 = [0.02, 0.02, 0.02, 0.02,  0.3, 0.3,  0.05, 0.05, 0.05,0.05]
     extended_strengths_opt5 = optimize.minimize(
         run_model_extended3, x0_extended5, args=args5, method='BFGS')
-    #extended_strengths_opt4.x = [5.91747024e-02, 1.94893439e-01, 7.70492206e-02, 7.59881778e-02,
-      #9.19586433e-01, 4.35501893e-01, 7.20109299e-01, 4.14923898e+02,
-       #1.98683174e-02] 23 maart
+    #extended_strengths_opt5.x = [0.06082821, 0.16626944, 0.14856812, 0.15803586, 0.71509837,
+    #0.28689296, 0.71811335, 0.03639981, 0.01707751, 0.00972566]23 maart
     goal_strengths_simultaan_dict3, counted_strengths_simultaan_dict2, LL8 = run_model_extended3(
         extended_strengths_opt5.x, 'goals counted_attempts_0.219', True, ft_goals,  ft_counted0219, args5[-1])
 
@@ -871,13 +872,13 @@ if run_counted:
     args4 = ('goals counted_attempts_0.13', False, ft_goals, ft_counted013, 1)
 
     x0_extended4 = [0.02, 0.02, 0.02, 0.02,  0.3, 0.3,  0.05, 0.05, 0.05]
-    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1)  # a1 a2 a3 a4
+    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1),                     # a1 a2 a3 a4
             (-5, 10), (-5, 10),  (0, 10), (0, 700), (-5, 5)]      # delta1 delta2 l3 theta3 eta1
     #a1,  a2, a3, a4,  delta1, delta2, l3, theta3, eta1
     extended_strengths_opt4_013 = optimize.minimize(run_model_extended3, x0_extended4, args=args4, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
         'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
 
-
+    # 23maart opt = [ 0.03745222,  0.19042747,  0.04867833, -0.04638817,  0.34614958,  0.20329094,  0.71427837,  0.34704024, -0.1538622 ]
 
      
     goal_strengths_simultaan_dict2_013, counted_strengths_simultaan_dict_013, LL9 = run_model_extended3(
@@ -897,19 +898,16 @@ if run_counted:
     x0_extended5 = [0.02, 0.02, 0.02, 0.02,  0.3, 0.3,  0.05, 0.05, 0.05, 0.05]
 
      
-    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1)  # a1 a2 a3 a4
-            (-5, 10), (-5, 10),  (0, 10), (0, 700), (-5, 5)]      # delta1 delta2 l3 theta3 eta1
+    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1),  # a1 a2 a3 a4
+            (-5, 10), (-5, 10),  (0, 10), (0, 700), (-5, 5), (-5, 5)]      # delta1 delta2 l3 theta3 eta1
     #a1,  a2, a3, a4,  delta1, delta2, l3, theta3, eta1
     extended_strengths_opt5_013 = optimize.minimize(run_model_extended3, x0_extended5, args=args5, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
         'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
      
     goal_strengths_simultaan_dict3_013, counted_strengths_simultaan_dict2_013, LL10 = run_model_extended3(
         extended_strengths_opt5_013.x, 'goals counted_attempts_0.219', True, ft_goals,  ft_counted013, args5[-1])
-
+#23maart opt = [0.06310705, 0.16560845, 0.03238503, 0.04420935, 0.61410342,  0.32146282, 0.7222154 , 0.10422784, 0.02842984, 0.02501355]
     print(f'SUCCESFULLY (?) FINISHED ESTIMATING EXTENSION 4')
-
-
-
 
 
 #attempt_strengths_opt, LL2 = run_model(x_opt_attempts, 'weighted_attempts_discrete', True)
@@ -932,11 +930,16 @@ def plot_dict_entry(ft, team, variable_names='goals', save = False):
     attack = [i[0] for i in ft[team]]
     defense = [i[1] for i in ft[team]]
     x = pd.DataFrame([attack, defense]).T
-    x.columns = ['attack_'+variable_names, 'defense_'+variable_names]
-    x.plot(title=team+'__'+variable_names)
-    fig = x.plot(title=team+'__'+variable_names).get_figure()
+    x.columns = ['atk '+variable_names, 'def '+variable_names]
+    x.plot(title=team+' '+variable_names)
+    plt.xlabel('round')
+    plt.ylabel('strength')
+    
     if save != False:
-        fig.savefig(team+'__'+variable_names+'.png', dpi=400)
+        fig = x.plot(title=team+' '+variable_names).get_figure()
+        plt.xlabel('round')
+        plt.ylabel('strength')
+        fig.savefig(team+' '+variable_names+'.png', dpi=400)
 
 
 plot_dict_entry(strengths_opt,'Lyon')
@@ -981,15 +984,19 @@ def compare_graphs(ft1, ft2, team, variable_names='goals', save= False):
     attack2 = [i[0] for i in ft2[team]]
     defense2 = [i[1] for i in ft2[team]]
     x1 = pd.DataFrame([attack1, defense1, attack2, defense2]).T
-    x1.columns = ['atk_'+variable_names + '_base',
-                  'def_'+variable_names + '_base', 'atk_'+variable_names + '_extended',
-                  'def_'+variable_names + '_extended']
+    x1.columns = ['atk '+ 'base',
+                  'def ' + 'base', 
+                  'atk '  + 'ext',
+                  'def '+'ext']
 
-    x1.plot(title=team+'__'+variable_names)
-
+    x1.plot(title=team+' '+variable_names  )
+    plt.xlabel('round')
+    plt.ylabel('strength')
     #fig = x1.plot(title=team+'__'+variable_names).get_figure()
     if save != False:
-        fig = x1.plot(title=team+'__'+variable_names).get_figure()
+        fig = x1.plot(title=team+' '+variable_names+' strengths ').get_figure()
+        plt.xlabel('round')
+        plt.ylabel('strength')
         fig.savefig(team+'__'+variable_names+'.png', dpi=400)
 
 # def game_likelihood():
