@@ -514,7 +514,7 @@ def run_model(params, *args):
             ft_local[away_team].append((alpha_j_next, beta_j_next, round, match.id_odsp,'away'))
 
             #results_dict[match.id_odsp]['h_est_'+variable_names].append()
-            log = False
+            log = True
             if not log:
                 p = biv_poiss.prob_mass_func(home_result, away_result, l1, l2, l3)
 
@@ -558,6 +558,9 @@ opt_goals = optimize.minimize(run_model, x0_goals, args=args, method='SLSQP', bo
     'disp': True, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-12, 'maxfun': 1500000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
 #opt_attempts = optimize.minimize(run_model, x0_attempts,args = args2, method='BFGS')
 
+
+# opt_goals.x = [0.109, 0.096, 0.65, 0.846] 23 maart, log_pmf 
+# opt_goals.x
 
 #opt = optimize.minimize(run_model, x0_b,args = args, method='BFGS')
 #g_optimum_no_b = [0.02030879, 0.01928687, 0.32837571, 0.05405947]
@@ -826,7 +829,7 @@ if run_counted:
     args4 = ('goals counted_attempts_0.219', False, ft_goals, ft_counted0219, 1)
 
     x0_extended4 = [0.02, 0.02, 0.02, 0.02,  0.3, 0.3,  0.05, 0.05, 0.05]
-    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1)  # a1 a2 a3 a4
+    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1),  # a1 a2 a3 a4
             (-5, 10), (-5, 10),  (0, 10), (0, 700), (-5, 5)]      # delta1 delta2 l3 theta3 eta1
     #a1,  a2, a3, a4,  delta1, delta2, l3, theta3, eta1
     extended_strengths_opt4 = optimize.minimize(run_model_extended3, x0_extended4, args=args4, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
@@ -1071,3 +1074,4 @@ print(
 #     fig = x1.plot(title=team+'__'+variable_names).get_figure()
 #     if save != False:
 #         fig.savefig(team+'__'+variable_names+'.png', dpi=400)
+#%%

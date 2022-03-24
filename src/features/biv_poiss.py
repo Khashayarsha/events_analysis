@@ -1,8 +1,9 @@
 import math 
 import numpy as np
-thresh = 30
-eps = 1e-12
 
+thresh = 20 # was eerst30
+eps = 1e-4   #was eerst 1e-3
+print(f"biv_poiss thresh = {thresh},  epsilon = {eps}")
 # def bivariate_poisson_like(a, b,  l1, l2, l3, log = False):
 #     #eps = 1e-3
 
@@ -48,10 +49,26 @@ eps = 1e-12
 #         return np.log(t_1/x*p_km_k+t_0/x*p_km_km)
 
 
+def log_pmf(x, y, l1, l2, l3):
+    x = int(x)
+    y = int(y)
+    l1 = np.clip(l1, a_min=eps, a_max=thresh)
+    l2 = np.clip(l2, a_min=eps, a_max=thresh)
+    l3 = np.clip(l3, a_min=eps, a_max=thresh)
+    if x < 0 or y < 0:
+        print("ERROR, NEGATIVE VALUE FOR GOALS DETECTED IN BIV_POISSON.PMF")
 
+    #log likelihood:
+    log_ll_first = -l1 - l2 - l3 + \
+        math.log(l1)*x + math.log(l2)*y - \
+        math.log(math.factorial(x)) - math.log(math.factorial(y))
 
+    log_ll_second = 0
+    for k in range(0, min(x, y)+1):
+        log_ll_second += k * (math.log(l3) - math.log(l1) - math.log(l2)) + math.log(
+            math.comb(x, k)) + math.log(math.comb(y, k)) + math.log(math.factorial(k))
 
-
+    return log_ll_first + log_ll_second
 
 
 
@@ -97,13 +114,13 @@ def link_function(ai, aj, bi, bj, delta):  #
     exponent1 = delta + ai - bj 
     try:
         l1 = min(thresh, math.exp(exponent1))       #delta + ai - bj))
-        l1 = max(0.01, l1)
+        l1 = max(eps, l1) #was eerst 0.01
     except OverflowError:
         l1 = thresh #was eerst 50, daarvoor 10 
 
     try:
         l2 = min(thresh, math.exp(aj - bi))
-        l2 = max(0.01, l2)
+        l2 = max(eps, l2) #was eerst 0.01
     except OverflowError:
         l2 = thresh
 
