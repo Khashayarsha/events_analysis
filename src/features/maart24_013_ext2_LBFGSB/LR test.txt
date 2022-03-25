@@ -1,0 +1,1 @@
+Likelihood-ratio statistic 428.46249351242295, p-value: 2.1151525957301406e-89

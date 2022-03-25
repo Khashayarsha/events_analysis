@@ -1,8 +1,8 @@
 import math 
 import numpy as np
 
-thresh = 20 # was eerst30
-eps = 1e-4   #was eerst 1e-3
+thresh = 15 # was eerst30
+eps = 1e-3   #was eerst 1e-3
 print(f"biv_poiss thresh = {thresh},  epsilon = {eps}")
 # def bivariate_poisson_like(a, b,  l1, l2, l3, log = False):
 #     #eps = 1e-3

@@ -1,0 +1,4 @@
+Likelihood-ratio statistic 546.3879948820286, p-value: 8.480980983103935e-115
+
+
+base = 5069         ext = 4796.15            

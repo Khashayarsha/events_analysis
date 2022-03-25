@@ -584,10 +584,10 @@ ft_attempts = get_strengths_dictionary(f1_attempts, variable_names='attempts')
 args2 = ('attempts', False)
 
 x0_attempts = [0.05, 0.05, 0.3, 0.1]
-bnds = [(-0.5, 0.5), (-0.5, 0.5), (-6, 20),   (0, 20) ]
-opt_attempts = optimize.minimize(run_model, x0_attempts, args=args2, method='SLSQP', bounds=bnds, tol=None, callback=None, options={
-                                        'disp':True, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-12, 'maxfun': 1500000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
-#opt_attempts = optimize.minimize(run_model, x0_attempts,args = args2, method='BFGS')
+bnds = [(-1, 1), (-1, 1), (-20, 20),   (0, 20) ]
+#opt_attempts = optimize.minimize(run_model, x0_attempts, args=args2, method='SLSQP', bounds=bnds, tol=None, callback=None, options={
+                                        #'disp':True, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-12, 'maxfun': 1500000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+opt_attempts = optimize.minimize(run_model, x0_attempts,args = args2, method='BFGS')
 # opt_est = [1.43490024e-02, 3.33103092e-02,
 #                   2.55336435e-01, 2.95511352e-11]
 attempt_strengths_opt, match_dict_attempts, LL2 = run_model(opt_attempts.x, 'attempts', True)
@@ -912,6 +912,25 @@ if run_counted:
 #23maart opt = [0.06310705, 0.16560845, 0.03238503, 0.04420935, 0.61410342,  0.32146282, 0.7222154 , 0.10422784, 0.02842984, 0.02501355]
     print(f'SUCCESFULLY (?) FINISHED ESTIMATING EXTENSION 4')
 
+    print('estimating model extension RAW ATTEMPTS  (simulataneous estimation, using RAW ATTEMPT)  eta1  eta2')
+    ft_att = ft_attempts
+    argsRAW = ('goals attempts', False, ft_goals, ft_att, 2)
+
+    x0_extended5 = [0.02, 0.02, 0.02, 0.02,  0.3, 0.3,  0.05, 0.05, 0.05, 0.05]
+
+
+    bnds = [(-1, 1), (-1, 1), (-1, 1), (-1, 1),  # a1 a2 a3 a4
+            (-5, 10), (-5, 10),  (0, 10), (0, 700), (-5, 5), (-5, 5)]      # delta1 delta2 l3 theta3 eta1
+    #a1,  a2, a3, a4,  delta1, delta2, l3, theta3, eta1 eta2
+    extended_strengths_opt5_RAW = optimize.minimize(run_model_extended3, x0_extended5, args=argsRAW, method='L-BFGS-B', bounds=bnds, tol=None, callback=None, options={
+        'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+
+    goal_strengths_simultaan_dict3_RAW, counted_strengths_simultaan_dict2_RAW, LLRAW = run_model_extended3(
+        extended_strengths_opt5_RAW.x, 'goals counted_attempts_0.219', True, ft_goals,  ft_att, argsRAW[-1])
+    #23maart opt = [0.06310705, 0.16560845, 0.03238503, 0.04420935, 0.61410342,  0.32146282, 0.7222154 , 0.10422784, 0.02842984, 0.02501355]
+    print(f'SUCCESFULLY (?) FINISHED ESTIMATING RAW EXT2')
+
+
 
 #attempt_strengths_opt, LL2 = run_model(x_opt_attempts, 'weighted_attempts_discrete', True)
 
@@ -933,7 +952,7 @@ def plot_dict_entry(ft, team, variable_names='goals', save = False):
     attack = [i[0] for i in ft[team]]
     defense = [i[1] for i in ft[team]]
     x = pd.DataFrame([attack, defense]).T
-    x.columns = ['atk '+variable_names, 'def '+variable_names]
+    x.columns = ['atk ', 'def ']
     x.plot(title=team+' '+variable_names)
     plt.xlabel('round')
     plt.ylabel('strength')
@@ -967,7 +986,7 @@ plot_dict_entry(counted_strengths_simultaan_dict2,
                 'Lyon', 'counted_attempts_strengths_ext2')
 
 
-def compare_graphs(ft1, ft2, team, variable_names='goals', save= False):
+def compare_graphs(ft1, ft2, team, variable_names='goals', save= False,  base_model = 'base_model', ext_model = 'ext. model'):
     # if variable_names == 'goals':
     #     attack = [i[0] for i in ft[team]]
     #     defense = [i[1] for i in ft[team]]
@@ -987,10 +1006,10 @@ def compare_graphs(ft1, ft2, team, variable_names='goals', save= False):
     attack2 = [i[0] for i in ft2[team]]
     defense2 = [i[1] for i in ft2[team]]
     x1 = pd.DataFrame([attack1, defense1, attack2, defense2]).T
-    x1.columns = ['atk '+ 'base',
-                  'def ' + 'base', 
-                  'atk '  + 'ext',
-                  'def '+'ext']
+    x1.columns = ['atk '+ base_model,
+                  'def ' + base_model, 
+                  'atk '  + ext_model,
+                  'def '+ext_model]
 
     x1.plot(title=team+' '+variable_names  )
     plt.xlabel('round')

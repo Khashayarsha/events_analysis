@@ -1,0 +1,17 @@
+ fun: 5071.525581476248
+ hess_inv: <10x10 LbfgsInvHessProduct with dtype=float64>
+      jac: array([-3.34117431e+01, -8.11874088e+01,  6.92441991e+03,  3.33213945e+04,
+       -8.65138646e+01,  2.38094708e+02, -8.20116834e+01,  5.04214726e+00,
+       -1.51288077e+01,  1.37801726e+02])
+  message: b'CONVERGENCE: REL_REDUCTION_OF_F_<=_FACTR*EPSMCH'
+     nfev: 1771
+      nit: 82
+     njev: 161
+   status: 0
+  success: True
+        x: array([ 8.23748625e-02,  7.01046146e-02,  1.66467772e-01, -2.71196916e-02,
+        2.37649764e-01,  1.59709551e-01,  8.12566332e-01,  8.10983692e+00,
+       -3.51881332e-03,  5.41254783e-02])
+
+
+Likelihood-ratio statistic -61.81349523083736, p-value: 1.0
